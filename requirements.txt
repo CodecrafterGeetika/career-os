@@ -2,5 +2,5 @@ streamlit>=1.36
 pandas>=2.0
 plotly>=5.20
 pytest>=8.0
-anthropic>=0.40.0
+groq
 # Optional AI tips (app works without it): pip install anthropic
