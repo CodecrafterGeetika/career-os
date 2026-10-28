@@ -1,69 +1,65 @@
 
-"""Optional AI career and study tips using Anthropic."""
+"""AI-powered career and study tips using the Groq API."""
 from __future__ import annotations
 
 import os
 
 
 def _get_setting(name: str, default: str = "") -> str:
-    """Read a setting from environment variables or Streamlit Secrets."""
+    """Read configuration from environment variables or Streamlit Secrets."""
     value = os.environ.get(name)
     if value:
         return value
 
     try:
         import streamlit as st
-
         value = st.secrets.get(name, default)
         return str(value) if value else default
     except Exception:
-        # Streamlit Secrets may not be configured locally.
         return default
 
 
 def ai_available() -> bool:
-    """Return whether an Anthropic API key is configured."""
-    return bool(_get_setting("ANTHROPIC_API_KEY"))
+    """Check whether a Groq API key is configured."""
+    return bool(_get_setting("GROQ_API_KEY"))
 
 
 def study_tips(gaps: list[str], target_role: str) -> str:
-    """Generate a concise two-week study plan."""
-    api_key = _get_setting("ANTHROPIC_API_KEY")
+    """Generate a practical two-week study plan."""
+    api_key = _get_setting("GROQ_API_KEY")
 
     if not api_key:
-        return "AI is not configured yet. Add ANTHROPIC_API_KEY in Streamlit Secrets."
+        return "AI is not configured. Add GROQ_API_KEY in Streamlit Secrets."
 
     try:
-        import anthropic
+        from groq import Groq
 
-        client = anthropic.Anthropic(api_key=api_key)
-        model = _get_setting("CAREEROS_AI_MODEL", "claude-sonnet-4-6")
+        client = Groq(api_key=api_key)
+        model = _get_setting("GROQ_MODEL", "openai/gpt-oss-20b")
 
         prompt = (
-            f"A CSE student targets '{target_role}' and lacks these skills: "
-            f"{', '.join(gaps) or 'none'}. "
-            "Give a concise, practical two-week study plan in exactly 5 bullet points. "
-            "Prioritize free resources where possible. Do not invent URLs or job notices."
+            f"A CSE student is targeting '{target_role}' and needs to improve "
+            f"these skills: {', '.join(gaps) or 'none specified'}. "
+            "Create a practical two-week study plan in exactly 5 bullet points. "
+            "Prioritize free learning resources. Do not invent URLs, job openings, "
+            "or recruitment deadlines. Keep the advice beginner-friendly."
         )
 
-        message = client.messages.create(
+        response = client.chat.completions.create(
             model=model,
-            max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.5,
         )
 
-        return "\n".join(
-            block.text
-            for block in message.content
-            if getattr(block, "type", "") == "text"
-        ) or "AI returned an empty response. Please try again."
+        content = response.choices[0].message.content
+        return content.strip() if content else "AI returned an empty response."
 
     except ImportError:
-        return "The Anthropic package is missing. Check requirements.txt and redeploy."
+        return "Groq package is missing. Check requirements.txt and redeploy."
 
     except Exception:
-        # Avoid showing technical details or credentials to users.
         return (
-            "AI could not generate tips right now. "
-            "Please check the API key, model setting, and API account, then try again."
+            "AI could not generate study tips right now. "
+            "Check your Groq API key, model setting, and usage limits."
         )
