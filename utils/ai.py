@@ -48,8 +48,9 @@ def study_tips(gaps: list[str], target_role: str) -> str:
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
+            max_completion_tokens=1200,
             temperature=0.5,
+            include_reasoning=False,
         )
 
         content = response.choices[0].message.content
