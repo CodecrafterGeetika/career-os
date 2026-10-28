@@ -12,10 +12,17 @@ from views.tracker import scored_frame
 
 
 def render():
-    header(
-        "CareerOS Dashboard",
-        "Your career command centre — track opportunities, deadlines, and preparation.",
-    )
+    st.markdown(
+    """
+    <div style="padding: 1.5rem 0 1rem 0;">
+        <h1 style="margin-bottom: 0.4rem;">CareerOS CSE</h1>
+        <p style="font-size: 1rem; color: #64748b; margin-top: 0;">
+            Your career command centre — opportunities, deadlines & preparation.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
     p = db.get_profile(U)
     opps = scored_frame(p, db.list_opportunities(U))
