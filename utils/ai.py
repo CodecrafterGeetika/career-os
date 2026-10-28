@@ -1,27 +1,69 @@
-"""Optional AI tips. Needs ANTHROPIC_API_KEY (env var or Streamlit secrets) and `pip install anthropic`.
-Only skill names are sent, never personal details. The app is fully functional without this."""
+
+"""Optional AI career and study tips using Anthropic."""
 from __future__ import annotations
 
 import os
 
 
+def _get_setting(name: str, default: str = "") -> str:
+    """Read a setting from environment variables or Streamlit Secrets."""
+    value = os.environ.get(name)
+    if value:
+        return value
+
+    try:
+        import streamlit as st
+
+        value = st.secrets.get(name, default)
+        return str(value) if value else default
+    except Exception:
+        # Streamlit Secrets may not be configured locally.
+        return default
+
+
 def ai_available() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    """Return whether an Anthropic API key is configured."""
+    return bool(_get_setting("ANTHROPIC_API_KEY"))
 
 
 def study_tips(gaps: list[str], target_role: str) -> str:
-    if not ai_available():
-        return "AI is not configured. Set ANTHROPIC_API_KEY to enable tips."
+    """Generate a concise two-week study plan."""
+    api_key = _get_setting("ANTHROPIC_API_KEY")
+
+    if not api_key:
+        return "AI is not configured yet. Add ANTHROPIC_API_KEY in Streamlit Secrets."
+
     try:
         import anthropic
-        client = anthropic.Anthropic()
-        msg = client.messages.create(
-            model=os.environ.get("CAREEROS_AI_MODEL", "claude-sonnet-4-6"), max_tokens=500,
-            messages=[{"role": "user", "content":
-                       f"A CSE student targets '{target_role}' and lacks these skills: {', '.join(gaps) or 'none'}. "
-                       "Give a concise 2-week study approach, 5 bullet points. Do not invent URLs or job notices."}])
-        return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+
+        client = anthropic.Anthropic(api_key=api_key)
+        model = _get_setting("CAREEROS_AI_MODEL", "claude-sonnet-4-6")
+
+        prompt = (
+            f"A CSE student targets '{target_role}' and lacks these skills: "
+            f"{', '.join(gaps) or 'none'}. "
+            "Give a concise, practical two-week study plan in exactly 5 bullet points. "
+            "Prioritize free resources where possible. Do not invent URLs or job notices."
+        )
+
+        message = client.messages.create(
+            model=model,
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        return "\n".join(
+            block.text
+            for block in message.content
+            if getattr(block, "type", "") == "text"
+        ) or "AI returned an empty response. Please try again."
+
     except ImportError:
-        return "Install the optional package: pip install anthropic"
-    except Exception as exc:  # network/auth errors should not crash the app
-        return f"AI request failed: {exc}"
+        return "The Anthropic package is missing. Check requirements.txt and redeploy."
+
+    except Exception:
+        # Avoid showing technical details or credentials to users.
+        return (
+            "AI could not generate tips right now. "
+            "Please check the API key, model setting, and API account, then try again."
+        )
